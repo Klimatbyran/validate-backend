@@ -1,55 +1,95 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import { QueueService } from "../services/QueueService";
 import { BaseJob } from "../schemas/types";
-import { queueResponseSchema } from "../schemas/response";
+import { error404ResponseSchema, queueJobResponseSchema, queueResponseSchema, queueStatsResponseSchema } from "../schemas/response";
 import { JOB_STATUS, STATUS } from "../lib/bullmq";
 import { JobType } from "bullmq";
+import { readQueueJobPathParamsSchema, readQueuePathParamsSchema, readQueueQueryStringSchema, readQueueStatsQueryStringSchema } from "../schemas/request";
 
 export async function readQueuesRoute(app: FastifyInstance) {
-    app.get(
-      '/:name',
-      {
-        schema: {
-          summary: 'Get jobs in requested route',
-          description: '',
-          tags: ['Queues'],
-          response: {
-            200: queueResponseSchema
-          },
+  app.get(
+    '/:name',
+    {
+      schema: {
+        summary: 'Get jobs in requested queue',
+        description: '',
+        tags: ['Queues'],
+        params: readQueuePathParamsSchema,
+        querystring: readQueueQueryStringSchema,
+        response: {
+          200: queueResponseSchema
         },
       },
-      async (
-        request: FastifyRequest<{
-          Params: {name: string}
-        }>,
-        reply
-      ) => {
-        const { name } = request.params;
-        const queueService = await QueueService.getQueueService();
-        const queue = await queueService.getQueue(name);
-        const jobs: BaseJob[] = []
-        for(const status of JOB_STATUS) {
-          const rawJobs = await queue.getJobs([status as JobType]);
-          jobs.push(...rawJobs.map(job => {
-            const baseJob: BaseJob = {
-              name: job.name,
-              id: job.id,
-              timestamp: job.timestamp,
-              processedBy: job.processedBy,
-              finishedOn: job.finishedOn,
-              attemptsMade: job.attemptsMade,
-              failedReason: job.failedReason,
-              stacktrace: job.stacktrace,
-              progress: job.progress,
-              returnvalue: job.returnvalue,
-              opts: job.opts,
-              delay: job.delay,
-              type: status as STATUS
-            };
-            return baseJob;
-          }));
-        }
-        return reply.send(jobs)
-      }
-    )
-  }
+    },
+    async (
+      request: FastifyRequest<{
+        Params: {name: string},
+        Querystring: {status?: STATUS}
+      }>,
+      reply
+    ) => {
+      const { name } = request.params;
+      const { status } = request.query;
+      const queueService = await QueueService.getQueueService();
+      const jobs = await queueService.getJobs(name, status);      
+      return reply.send(jobs)
+    }
+  ),
+
+  app.get(
+    '/stats',
+    {
+      schema: {
+        summary: 'Get queue job stats',
+        description: '',
+        tags: ['Queues'],
+        querystring: readQueueStatsQueryStringSchema,
+        response: {
+          200: queueStatsResponseSchema
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Querystring: {queue?: string},
+      }>,
+      reply
+    ) => {
+      const { queue } = request.query;
+      const queueService = await QueueService.getQueueService();
+      const stats = await queueService.getQueueStats(queue);      
+      return reply.send(stats)
+    }
+  ),
+
+  app.get(
+    '/:name/:id',
+    {
+      schema: {
+        summary: 'Get job data',
+        description: '',
+        tags: ['Queues'],
+        params: readQueueJobPathParamsSchema,
+        response: {
+          200: queueJobResponseSchema,
+          400: error404ResponseSchema
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: {name: string, id: string}
+      }>,
+      reply
+    ) => {
+      const { name, id } = request.params;
+      const queueService = await QueueService.getQueueService();
+      try {
+        const jobData = await queueService.getJobData(name, id);
+        return reply.send(jobData)
+      } catch (error) {
+        return reply.status(404).send({ error: 'Job does not exist in this queue' })
+      }     
+    }
+  )
+}

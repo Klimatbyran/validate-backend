@@ -7,6 +7,7 @@ import { resolve } from 'path'
 import apiConfig from './config/api'
 import { readQueuesRoute } from './routes/readQueues'
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod'
+import { z } from 'zod'
 
 async function startApp() {
   const app = Fastify({logger: true})
@@ -44,13 +45,10 @@ async function startApp() {
     schema: {
       requests: {},
       response: {
-      200: {
-        type: "object",
-        properties: {
-        status: { type: "string" },
-        timestamp: { type: "string", format: "date-time" }
-        }
-      }
+      200: z.object({
+        status: z.string(),
+        timestamp: z.string(),
+      })
       },
       description: "Health check endpoint",
       tags: ["System"]

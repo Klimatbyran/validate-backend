@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jobStatusSchema } from './common';
 
 export const baseJobSchema = z.object({
     name: z.string(),
@@ -13,7 +14,24 @@ export const baseJobSchema = z.object({
     returnvalue: z.any().optional(),
     opts: z.object({}).optional(),
     delay: z.number().optional(),
-    type: z.enum(['active', 'waiting', 'waiting-children', 'prioritized', 'completed', 'failed', 'delayed', 'paused']),
-  });
+    type: jobStatusSchema.optional(),
+});
+
+export const dataJobSchema = baseJobSchema.extend({
+    data: z.any().optional(),
+});
+
+export const queueStatusSchema = z.object({
+  name: z.string(),
+  status: z.record(jobStatusSchema, z.number().optional())
+})
+
+export const queueStatsResponseSchema = z.array(queueStatusSchema);
 
 export const queueResponseSchema = z.array(baseJobSchema);
+
+export const queueJobResponseSchema = dataJobSchema;
+
+export const error404ResponseSchema = z.object({
+  error: z.string(),
+});
