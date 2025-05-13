@@ -28,6 +28,19 @@ export const queueStatusSchema = z.object({
   status: z.record(jobStatusSchema, z.number().optional())
 })
 
+export const processSchema = z.object({
+  id: z.string(),
+  company: z.string().optional(),
+  wikidataId: z.string().optional(),
+  jobs: z.array(baseJobSchema)
+})
+
+export const companyProcessSchema = z.object({
+  company: z.string().optional(),
+  wikidataId: z.string().optional(),
+  processes: z.array(processSchema.omit({company: true, wikidataId: true}))
+});
+
 export const queueStatsResponseSchema = z.array(queueStatusSchema);
 
 export const queueResponseSchema = z.array(baseJobSchema);
@@ -37,6 +50,10 @@ export const processResponseSchema = z.array(baseJobSchema);
 export const queueAddJobResponseSchema = z.array(baseJobSchema);
 
 export const queueJobResponseSchema = dataJobSchema;
+
+export const processesResponseSchema = z.array(processSchema);
+
+export const processesGroupedByCompanyResponseSchema = z.array(companyProcessSchema);
 
 export const error404ResponseSchema = z.object({
   error: z.string(),

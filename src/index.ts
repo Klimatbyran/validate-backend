@@ -8,7 +8,7 @@ const port = apiConfig.port;
 
 async function main() {
     const app = await startApp();
-    console.log(await startQueues());
+    await startQueues();
     try {
         await app.listen(
           {

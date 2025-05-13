@@ -1,6 +1,6 @@
 import { Job, JobType, Queue } from "bullmq";
 import startQueues, { JOB_STATUS, STATUS } from "../lib/bullmq";
-import { BaseJob, DataJob, QueueStatus } from "../schemas/types";
+import { BaseJob, CompanyProcess, DataJob, Process, QueueStatus } from "../schemas/types";
 
 export class QueueService {
     private static queueService: QueueService | undefined;
@@ -81,7 +81,7 @@ export class QueueService {
         return stats;
     }
 
-    public async getJobGroups(id: string): Promise<BaseJob[]> {
+    public async getJobProcess(id: string): Promise<BaseJob[]> {
         const queues = await this.getQueues();
         const jobs: BaseJob[] = [];
         for(const queue of Object.values(queues)) {
@@ -93,6 +93,55 @@ export class QueueService {
             jobs.push(...await Promise.all(filteredJobs));
         }
         return jobs;
+    }
+
+    public async getJobProcesses(): Promise<Process[]> {
+        const queues = await this.getQueues();
+        const processes: Record<string, Process> = {};
+        for(const queue of Object.values(queues)) {
+            const jobs = await queue.getJobs();
+            for(const job of jobs) {
+                const id = job.data.id ?? job.data.threadId;
+                const { wikidata, companyName } = job.data;
+                if(processes[id]) {
+                    processes[id].jobs.push(await this.transformJobtoBaseJob(job));
+                } else {
+                    processes[id] = {
+                        id: job.data.id ?? job.data.threadId,
+                        jobs: [await this.transformJobtoBaseJob(job)]
+                    }
+                }
+                if(companyName) {
+                    processes[id].company = companyName;
+                }                    
+
+                if(wikidata) {
+                    processes[id].wikidataId = wikidata.node;    
+                }
+                                
+            }
+        }
+        return Object.values(processes);
+    }
+
+    public async getJobProcessesGroupedByCompany(): Promise<CompanyProcess[]> {
+        const processes = await this.getJobProcesses();
+        const companyProcesses: Record<string, CompanyProcess> = {};
+        for(const process of processes) {
+            const company = process.company ?? "unknown";
+            if(companyProcesses[company]) {
+                companyProcesses[company].processes.push(process);
+            } else {
+                companyProcesses[company] = {
+                    company: process.company,
+                    processes: [process]
+                }
+            }
+            if(process.wikidataId && company !== "unknown") {
+                companyProcesses[company].wikidataId = process.wikidataId;    
+            }
+        }
+        return Object.values(companyProcesses);
     }
 
     private async transformJobtoBaseJob(job: Job, status?: string): Promise<BaseJob> {
