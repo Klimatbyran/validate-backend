@@ -1,10 +1,10 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import { QueueService } from "../services/QueueService";
-import { BaseJob } from "../schemas/types";
-import { error404ResponseSchema, queueJobResponseSchema, queueResponseSchema, queueStatsResponseSchema } from "../schemas/response";
+import { AddJobBody, BaseJob } from "../schemas/types";
+import { error404ResponseSchema, queueAddJobResponseSchema, queueJobResponseSchema, queueResponseSchema, queueStatsResponseSchema } from "../schemas/response";
 import { JOB_STATUS, STATUS } from "../lib/bullmq";
 import { JobType } from "bullmq";
-import { readQueueJobPathParamsSchema, readQueuePathParamsSchema, readQueueQueryStringSchema, readQueueStatsQueryStringSchema } from "../schemas/request";
+import { addQueueJobBodySchema, readQueueJobPathParamsSchema, readQueuePathParamsSchema, readQueueQueryStringSchema, readQueueStatsQueryStringSchema } from "../schemas/request";
 
 export async function readQueuesRoute(app: FastifyInstance) {
   app.get(
@@ -34,7 +34,37 @@ export async function readQueuesRoute(app: FastifyInstance) {
       const jobs = await queueService.getJobs(name, status);      
       return reply.send(jobs)
     }
-  ),
+  );
+
+  app.post(
+    '/:name',
+    {
+      schema: {
+        summary: 'Add job to a queue',
+        description: '',
+        tags: ['Queues'],
+        params: readQueuePathParamsSchema,
+        body: addQueueJobBodySchema,
+        response: {
+          200: queueAddJobResponseSchema
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: {name: string},
+        Body: AddJobBody
+      }>,
+      reply
+    ) => {
+      const { name } = request.params;
+      const { url, autoApprove} = request.body;
+      const queueService = await QueueService.getQueueService();
+      const job = await queueService.addJob(name, url, autoApprove);
+      console.log(job);  
+      return reply.send(job);
+    }
+  );
 
   app.get(
     '/stats',
@@ -60,7 +90,7 @@ export async function readQueuesRoute(app: FastifyInstance) {
       const stats = await queueService.getQueueStats(queue);      
       return reply.send(stats)
     }
-  ),
+  );
 
   app.get(
     '/:name/:id',
@@ -91,5 +121,5 @@ export async function readQueuesRoute(app: FastifyInstance) {
         return reply.status(404).send({ error: 'Job does not exist in this queue' })
       }     
     }
-  )
+  );
 }

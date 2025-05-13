@@ -1,4 +1,4 @@
-import { JobType, Queue } from "bullmq";
+import { Job, JobType, Queue } from "bullmq";
 import startQueues, { JOB_STATUS, STATUS } from "../lib/bullmq";
 import { BaseJob, DataJob, QueueStatus } from "../schemas/types";
 
@@ -39,47 +39,25 @@ export class QueueService {
         const queryStatus = status ? [status] : JOB_STATUS;
         for(const status of queryStatus) {
             const rawJobs = await queue.getJobs([status as JobType]);
-            jobs.push(...rawJobs.map(job => {
-                const baseJob: BaseJob = {
-                name: job.name,
-                id: job.id,
-                timestamp: job.timestamp,
-                processedBy: job.processedBy,
-                finishedOn: job.finishedOn,
-                attemptsMade: job.attemptsMade,
-                failedReason: job.failedReason,
-                stacktrace: job.stacktrace,
-                progress: job.progress,
-                returnvalue: job.returnvalue,
-                opts: job.opts,
-                delay: job.delay,
-                type: status as STATUS
-                };
-                return baseJob;
-            }));
+            jobs.push(...rawJobs.map(job => this.transformJobtoBaseJob(job, status)));
         }
         return jobs;
     }
 
-    public async getJobData(queueName: string, jobId: string): Promise<any> {
+    public async addJob(queueName: string, url: string, autoApprove: boolean = false): Promise<BaseJob> {
+        const queue = await this.getQueue(queueName);
+        const id = crypto.randomUUID();
+        const job = await queue.add('download ' + url.slice(-20), { url: url.trim(), autoApprove, id });
+        return this.transformJobtoBaseJob(job);
+    }
+
+    public async getJobData(queueName: string, jobId: string): Promise<DataJob> {
         const queue = await this.getQueue(queueName);
         const job = await queue.getJob(jobId);
         if(!job) throw new Error(`Job ${jobId} not found`);
-        return {
-            name: job.name,
-            id: job.id,
-            timestamp: job.timestamp,
-            processedBy: job.processedBy,
-            finishedOn: job.finishedOn,
-            attemptsMade: job.attemptsMade,
-            failedReason: job.failedReason,
-            stacktrace: job.stacktrace,
-            progress: job.progress,
-            returnvalue: job.returnvalue,
-            opts: job.opts,
-            delay: job.delay,
-            data: job.data,
-        };
+        const baseJob: DataJob = this.transformJobtoBaseJob(job);
+        baseJob.data = job.data;
+        return baseJob;
     }
 
     public async getQueueStats(queueName?: string): Promise<QueueStatus[]> {
@@ -97,5 +75,23 @@ export class QueueService {
             })
         }
         return stats;
+    }
+
+    private transformJobtoBaseJob(job: Job, status?: string): BaseJob {
+        return {
+            name: job.name,
+            id: job.id,
+            timestamp: job.timestamp,
+            processedBy: job.processedBy,
+            finishedOn: job.finishedOn,
+            attemptsMade: job.attemptsMade,
+            failedReason: job.failedReason,
+            stacktrace: job.stacktrace ?? [],
+            progress: typeof job.progress === 'number' ? job.progress : undefined,
+            returnvalue: job.returnvalue,
+            opts: job.opts,
+            delay: job.delay,
+            type: status ? status as STATUS : undefined
+        };
     }
 }

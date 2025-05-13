@@ -17,3 +17,8 @@ export const readQueueJobPathParamsSchema = z.object({
     name: z.string(),
     id: z.string()
 });
+
+export const addQueueJobBodySchema = z.object({
+    autoApprove: z.boolean().optional().default(false),
+    url: z.string().url(),
+}).required();
