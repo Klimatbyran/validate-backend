@@ -20,5 +20,5 @@ export const readQueueJobPathParamsSchema = z.object({
 
 export const addQueueJobBodySchema = z.object({
     autoApprove: z.boolean().optional().default(false),
-    url: z.string().url(),
+    urls: z.array(string().url()),
 }).required();

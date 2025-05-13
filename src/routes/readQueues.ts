@@ -58,11 +58,14 @@ export async function readQueuesRoute(app: FastifyInstance) {
       reply
     ) => {
       const { name } = request.params;
-      const { url, autoApprove} = request.body;
+      const { urls, autoApprove} = request.body;
       const queueService = await QueueService.getQueueService();
-      const job = await queueService.addJob(name, url, autoApprove);
-      console.log(job);  
-      return reply.send(job);
+      const addedJobs: BaseJob[] = [];
+      for(const url of urls) {
+        const addedJob = await queueService.addJob(name, url, autoApprove);
+        addedJobs.push(addedJob);
+      }
+      return reply.send(addedJobs);
     }
   );
 

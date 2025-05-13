@@ -30,7 +30,7 @@ export const queueStatsResponseSchema = z.array(queueStatusSchema);
 
 export const queueResponseSchema = z.array(baseJobSchema);
 
-export const queueAddJobResponseSchema = baseJobSchema;
+export const queueAddJobResponseSchema = z.array(baseJobSchema);
 
 export const queueJobResponseSchema = dataJobSchema;
 
