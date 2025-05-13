@@ -39,7 +39,10 @@ export class QueueService {
         const queryStatus = status ? [status] : JOB_STATUS;
         for(const status of queryStatus) {
             const rawJobs = await queue.getJobs([status as JobType]);
-            jobs.push(...rawJobs.map(job => this.transformJobtoBaseJob(job, status)));
+            const transformedJobs = await Promise.all(
+                rawJobs.map(job => this.transformJobtoBaseJob(job, status))
+            );
+            jobs.push(...transformedJobs);
         }
         return jobs;
     }
@@ -55,8 +58,9 @@ export class QueueService {
         const queue = await this.getQueue(queueName);
         const job = await queue.getJob(jobId);
         if(!job) throw new Error(`Job ${jobId} not found`);
-        const baseJob: DataJob = this.transformJobtoBaseJob(job);
-        baseJob.data = job.data;
+        const baseJob: DataJob = await this.transformJobtoBaseJob(job);
+        baseJob.data = job.data;        
+        baseJob.returnvalue = job.returnvalue;
         return baseJob;
     }
 
@@ -77,10 +81,26 @@ export class QueueService {
         return stats;
     }
 
-    private transformJobtoBaseJob(job: Job, status?: string): BaseJob {
+    public async getJobGroups(id: string): Promise<BaseJob[]> {
+        const queues = await this.getQueues();
+        const jobs: BaseJob[] = [];
+        for(const queue of Object.values(queues)) {
+            const queueJobs = await queue.getJobs();
+            const filteredJobs = queueJobs
+                .filter(job => (job.data.id === id || job.data.threadId === id))
+                .map(job => this.transformJobtoBaseJob(job));
+
+            jobs.push(...await Promise.all(filteredJobs));
+        }
+        return jobs;
+    }
+
+    private async transformJobtoBaseJob(job: Job, status?: string): Promise<BaseJob> {
         return {
             name: job.name,
+            queue: job.queueName,
             id: job.id,
+            processId: job.data.id ?? job.data.threadId ?? undefined,
             timestamp: job.timestamp,
             processedBy: job.processedBy,
             finishedOn: job.finishedOn,
@@ -88,10 +108,9 @@ export class QueueService {
             failedReason: job.failedReason,
             stacktrace: job.stacktrace ?? [],
             progress: typeof job.progress === 'number' ? job.progress : undefined,
-            returnvalue: job.returnvalue,
             opts: job.opts,
             delay: job.delay,
-            type: status ? status as STATUS : undefined
+            state: (await job.getState()) as JobType
         };
     }
 }

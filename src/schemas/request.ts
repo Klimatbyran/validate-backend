@@ -5,6 +5,10 @@ export const readQueuePathParamsSchema = z.object({
     name: z.string()
 });
 
+export const readProcessPathParamsSchema = z.object({
+    id: z.string()
+});
+
 export const readQueueQueryStringSchema = z.object({
     status: jobStatusSchema.optional()
 });
