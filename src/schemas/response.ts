@@ -1,9 +1,17 @@
 import { z } from 'zod';
 import { jobStatusSchema } from './common';
 
+export const approvalSchema = z.object({
+  summary: z.string(),
+  approved: z.boolean().default(false),
+  data: z.record(z.string(), z.string().or(z.number()).or(z.boolean()))
+})
+
 export const baseJobSchema = z.object({
     name: z.string(),
     id: z.string().optional(),
+    url: z.string().url().optional(),
+    autoApprove: z.boolean().optional().default(false),
     timestamp: z.number(),
     processId: z.string().optional(),
     queue: z.string(),
@@ -15,6 +23,7 @@ export const baseJobSchema = z.object({
     progress: z.number().optional(),
     opts: z.record(z.string(), z.any()).optional(),
     delay: z.number().optional(),
+    approval: approvalSchema.optional(),
     state: jobStatusSchema.optional(),
 });
 

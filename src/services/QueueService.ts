@@ -1,5 +1,5 @@
 import { Job, JobType, Queue } from "bullmq";
-import startQueues, { JOB_STATUS, STATUS } from "../lib/bullmq";
+import startQueues, { JOB_STATUS, QUEUE_NAMES, STATUS } from "../lib/bullmq";
 import { BaseJob, CompanyProcess, DataJob, Process, QueueStatus } from "../schemas/types";
 
 export class QueueService {
@@ -33,12 +33,15 @@ export class QueueService {
         return this.queues[name];
     }
 
-    public async getJobs(queueName: string, status?: string): Promise<BaseJob[]> {
-        const queue = await this.getQueue(queueName);
-        const jobs: BaseJob[] = []
+    public async getJobs(queueNames?: string[], status?: string): Promise<BaseJob[]> {
+        if(!queueNames  || queueNames.length === 0) {
+            queueNames = Object.values(QUEUE_NAMES);
+        }
         const queryStatus = status ? [status] : JOB_STATUS;
-        for(const status of queryStatus) {
-            const rawJobs = await queue.getJobs([status as JobType]);
+        const jobs: BaseJob[] = [];
+        for(const queueName of queueNames) {
+             const queue = await this.getQueue(queueName);
+            const rawJobs = await queue.getJobs(queryStatus as JobType[]);
             const transformedJobs = await Promise.all(
                 rawJobs.map(job => this.transformJobtoBaseJob(job, status))
             );
@@ -101,13 +104,13 @@ export class QueueService {
         for(const queue of Object.values(queues)) {
             const jobs = await queue.getJobs();
             for(const job of jobs) {
-                const id = job.data.id ?? job.data.threadId;
+                const id = job.data.id ?? job.data.threadId ?? "0";
                 const { wikidata, companyName } = job.data;
                 if(processes[id]) {
                     processes[id].jobs.push(await this.transformJobtoBaseJob(job));
                 } else {
                     processes[id] = {
-                        id: job.data.id ?? job.data.threadId,
+                        id: job.data.id ?? job.data.threadId ?? "0",
                         jobs: [await this.transformJobtoBaseJob(job)]
                     }
                 }
@@ -149,7 +152,10 @@ export class QueueService {
             name: job.name,
             queue: job.queueName,
             id: job.id,
+            url: job.data.url ?? undefined,
+            autoApprove: job.data.autoApprove ?? false,
             processId: job.data.id ?? job.data.threadId ?? undefined,
+            approval: job.data.approval ?? undefined,
             timestamp: job.timestamp,
             processedBy: job.processedBy,
             finishedOn: job.finishedOn,

@@ -8,6 +8,32 @@ import { addQueueJobBodySchema, readQueueJobPathParamsSchema, readQueuePathParam
 
 export async function readQueuesRoute(app: FastifyInstance) {
   app.get(
+    '/',
+    {
+      schema: {
+        summary: 'Get jobs',
+        description: '',
+        tags: ['Queues'],
+        querystring: readQueueQueryStringSchema,
+        response: {
+          200: queueResponseSchema
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Querystring: {status?: STATUS}
+      }>,
+      reply
+    ) => {
+      const { status } = request.query;
+      const queueService = await QueueService.getQueueService();
+      const jobs = await queueService.getJobs([], status);      
+      return reply.send(jobs)
+    }
+  );
+  
+  app.get(
     '/:name',
     {
       schema: {
@@ -31,7 +57,7 @@ export async function readQueuesRoute(app: FastifyInstance) {
       const { name } = request.params;
       const { status } = request.query;
       const queueService = await QueueService.getQueueService();
-      const jobs = await queueService.getJobs(name, status);      
+      const jobs = await queueService.getJobs([name], status);      
       return reply.send(jobs)
     }
   );
