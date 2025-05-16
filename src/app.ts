@@ -9,6 +9,7 @@ import { readQueuesRoute } from './routes/readQueues'
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import { readProcessRoute } from './routes/readProcess'
+import { readPipelineRoute } from './routes/readPipeline'
 
 async function startApp() {
   const app = Fastify({logger: true})
@@ -68,6 +69,10 @@ async function startApp() {
 
   app.register(readProcessRoute, {
     prefix: '/api/processes',
+  })
+
+  app.register(readPipelineRoute, {
+    prefix: '/api/pipeline',
   })
 
   await app.register(scalarPlugin, {
