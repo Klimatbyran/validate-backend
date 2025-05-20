@@ -33,7 +33,7 @@ export class QueueService {
         return this.queues[name];
     }
 
-    public async getJobs(queueNames?: string[], status?: string): Promise<BaseJob[]> {
+    public async getJobs(queueNames?: string[], status?: string, processId?: string): Promise<BaseJob[]> {
         if(!queueNames  || queueNames.length === 0) {
             queueNames = Object.values(QUEUE_NAMES);
         }
@@ -42,8 +42,36 @@ export class QueueService {
         for(const queueName of queueNames) {
              const queue = await this.getQueue(queueName);
             const rawJobs = await queue.getJobs(queryStatus as JobType[]);
+            if(processId) {
+                rawJobs.filter(job => job.data.id === processId || job.data.threadId === processId);
+            }
             const transformedJobs = await Promise.all(
                 rawJobs.map(job => this.transformJobtoBaseJob(job, status))
+            );
+            jobs.push(...transformedJobs);
+        }
+        return jobs;
+    }
+
+    public async getDataJobs(queueNames?: string[], status?: string, processId?: string): Promise<DataJob[]> {
+        if(!queueNames  || queueNames.length === 0) {
+            queueNames = Object.values(QUEUE_NAMES);
+        }
+        const queryStatus = status ? [status] : JOB_STATUS;
+        const jobs: BaseJob[] = [];
+        for(const queueName of queueNames) {
+             const queue = await this.getQueue(queueName);
+            const rawJobs = await queue.getJobs(queryStatus as JobType[]);
+            if(processId) {
+                rawJobs.filter(job => job.data.id === processId || job.data.threadId === processId);
+            }
+            const transformedJobs = await Promise.all(
+                rawJobs.map(async job => {
+                    const dataJob: DataJob = await this.transformJobtoBaseJob(job, status);                    
+                    dataJob.data = job.data;        
+                    dataJob.returnvalue = job.returnvalue;
+                    return dataJob;
+                })
             );
             jobs.push(...transformedJobs);
         }
@@ -84,69 +112,6 @@ export class QueueService {
         return stats;
     }
 
-    public async getJobProcess(id: string): Promise<BaseJob[]> {
-        const queues = await this.getQueues();
-        const jobs: BaseJob[] = [];
-        for(const queue of Object.values(queues)) {
-            const queueJobs = await queue.getJobs();
-            const filteredJobs = queueJobs
-                .filter(job => (job.data.id === id || job.data.threadId === id))
-                .map(job => this.transformJobtoBaseJob(job));
-
-            jobs.push(...await Promise.all(filteredJobs));
-        }
-        return jobs;
-    }
-
-    public async getJobProcesses(): Promise<Process[]> {
-        const queues = await this.getQueues();
-        const processes: Record<string, Process> = {};
-        for(const queue of Object.values(queues)) {
-            const jobs = await queue.getJobs();
-            for(const job of jobs) {
-                const id = job.data.id ?? job.data.threadId ?? "0";
-                const { wikidata, companyName } = job.data;
-                if(processes[id]) {
-                    processes[id].jobs.push(await this.transformJobtoBaseJob(job));
-                } else {
-                    processes[id] = {
-                        id: job.data.id ?? job.data.threadId ?? "0",
-                        jobs: [await this.transformJobtoBaseJob(job)]
-                    }
-                }
-                if(companyName) {
-                    processes[id].company = companyName;
-                }                    
-
-                if(wikidata) {
-                    processes[id].wikidataId = wikidata.node;    
-                }
-                                
-            }
-        }
-        return Object.values(processes);
-    }
-
-    public async getJobProcessesGroupedByCompany(): Promise<CompanyProcess[]> {
-        const processes = await this.getJobProcesses();
-        const companyProcesses: Record<string, CompanyProcess> = {};
-        for(const process of processes) {
-            const company = process.company ?? "unknown";
-            if(companyProcesses[company]) {
-                companyProcesses[company].processes.push(process);
-            } else {
-                companyProcesses[company] = {
-                    company: process.company,
-                    processes: [process]
-                }
-            }
-            if(process.wikidataId && company !== "unknown") {
-                companyProcesses[company].wikidataId = process.wikidataId;    
-            }
-        }
-        return Object.values(companyProcesses);
-    }
-
     private async transformJobtoBaseJob(job: Job, status?: string): Promise<BaseJob> {
         return {
             name: job.name,
@@ -165,7 +130,7 @@ export class QueueService {
             progress: typeof job.progress === 'number' ? job.progress : undefined,
             opts: job.opts,
             delay: job.delay,
-            state: (await job.getState()) as JobType
+            status: (await job.getState()) as JobType
         };
     }
 }

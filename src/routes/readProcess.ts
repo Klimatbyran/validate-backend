@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest } from "fastify";
 import { QueueService } from "../services/QueueService";
 import { processesGroupedByCompanyResponseSchema, processesResponseSchema, processResponseSchema } from "../schemas/response";
 import { readProcessPathParamsSchema } from "../schemas/request";
+import { ProcessService } from "../services/ProcessService";
 
 export async function readProcessRoute(app: FastifyInstance) {
   app.get(
@@ -20,8 +21,8 @@ export async function readProcessRoute(app: FastifyInstance) {
       _request,
       reply
     ) => {
-      const queueService = await QueueService.getQueueService();
-      const processes = await queueService.getJobProcesses();      
+      const processService = await ProcessService.getProcessService();
+      const processes = await processService.getProcesses();      
       return reply.send(processes)
     }
   ); 
@@ -42,8 +43,8 @@ export async function readProcessRoute(app: FastifyInstance) {
       _request,
       reply
     ) => {
-      const queueService = await QueueService.getQueueService();
-      const companyProcesses = await queueService.getJobProcessesGroupedByCompany();      
+      const processService = await ProcessService.getProcessService();
+      const companyProcesses = await processService.getProcessesGroupedByCompany(); 
       return reply.send(companyProcesses)
     }
   ); 
@@ -68,9 +69,9 @@ export async function readProcessRoute(app: FastifyInstance) {
       reply
     ) => {
       const { id } = request.params;
-      const queueService = await QueueService.getQueueService();
-      const jobs = await queueService.getJobProcess(id);      
-      return reply.send(jobs)
+      const processService = await ProcessService.getProcessService();
+      const process = await processService.getProcess(id);      
+      return reply.send(process)
     }
   );
 }

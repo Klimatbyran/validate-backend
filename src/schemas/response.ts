@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jobStatusSchema } from './common';
+import { jobStatusSchema, processStatusSchema } from './common';
 
 export const approvalSchema = z.object({
   summary: z.string(),
@@ -24,7 +24,7 @@ export const baseJobSchema = z.object({
     opts: z.record(z.string(), z.any()).optional(),
     delay: z.number().optional(),
     approval: approvalSchema.optional(),
-    state: jobStatusSchema.optional(),
+    status: jobStatusSchema.optional(),
 });
 
 export const dataJobSchema = baseJobSchema.extend({
@@ -41,6 +41,8 @@ export const processSchema = z.object({
   id: z.string(),
   company: z.string().optional(),
   wikidataId: z.string().optional(),
+  year: z.number().optional(),
+  status: processStatusSchema.optional(),
   jobs: z.array(baseJobSchema)
 })
 
@@ -54,7 +56,7 @@ export const queueStatsResponseSchema = z.array(queueStatusSchema);
 
 export const queueResponseSchema = z.array(baseJobSchema);
 
-export const processResponseSchema = z.array(baseJobSchema);
+export const processResponseSchema = processSchema;
 
 export const queueAddJobResponseSchema = z.array(baseJobSchema);
 
