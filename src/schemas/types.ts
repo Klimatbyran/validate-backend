@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { baseJobSchema, companyProcessSchema, dataJobSchema, processSchema, queueStatusSchema } from "./response";
 import { addQueueJobBodySchema } from "./request";
-import { pipelineSchema } from "./common";
+import { pipelineSchema, processStatusSchema } from "./common";
 
 export type BaseJob = z.infer<typeof baseJobSchema>
 
@@ -16,3 +16,5 @@ export type Process = z.infer<typeof processSchema>;
 export type CompanyProcess = z.infer<typeof companyProcessSchema>;
 
 export type Pipeline = z.infer<typeof pipelineSchema>;
+
+export type ProcessStatus = z.infer<typeof processStatusSchema>;
