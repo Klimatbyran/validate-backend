@@ -34,7 +34,7 @@ export const pipeline: Pipeline = [
         id: "precheck",
         name: "Pre-check",
         next: {
-            target: ["guessWikidata", "followUpFiscalYear"]
+            target: ["guessWikidata", "followUpFiscalYear", "followUpReportYear"]
         }
     },
     {
@@ -96,6 +96,13 @@ export const pipeline: Pipeline = [
     {
         id: "followUpFiscalYear",
         name: "Follow-up Fiscal Year",
+        next: {
+            target: ["extractEmissions"]
+        }
+    },
+    {
+        id: "followUpReportYear",
+        name: "Follow-up Report Year",
         next: {
             target: ["extractEmissions"]
         }
