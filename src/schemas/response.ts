@@ -1,10 +1,20 @@
 import { z } from 'zod';
 import { jobStatusSchema, processStatusSchema } from './common';
 
+export const approvalDataSchema = z.object({
+  oldValue: z.any(),
+  newValue: z.any()
+});
+
 export const approvalSchema = z.object({
   summary: z.string(),
+  type: z.string(),
+  data: approvalDataSchema,
   approved: z.boolean().default(false),
-  data: z.record(z.string(), z.string().or(z.number()).or(z.boolean()))
+  metadata: z.object({
+    comment: z.string().optional(),
+    source: z.string().optional()
+  })
 })
 
 export const baseJobSchema = z.object({
@@ -43,7 +53,9 @@ export const processSchema = z.object({
   wikidataId: z.string().optional(),
   year: z.number().optional(),
   status: processStatusSchema.optional(),
-  jobs: z.array(baseJobSchema)
+  jobs: z.array(baseJobSchema),
+  startedAt: z.number().optional(),
+  finishedAt: z.number().optional()
 })
 
 export const companyProcessSchema = z.object({

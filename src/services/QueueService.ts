@@ -46,7 +46,7 @@ export class QueueService {
                 rawJobs.filter(job => job.data.id === processId || job.data.threadId === processId);
             }
             const transformedJobs = await Promise.all(
-                rawJobs.map(job => this.transformJobtoBaseJob(job, status))
+                rawJobs.map(job => transformJobtoBaseJob(job))
             );
             jobs.push(...transformedJobs);
         }
@@ -67,7 +67,7 @@ export class QueueService {
             }
             const transformedJobs = await Promise.all(
                 rawJobs.map(async job => {
-                    const dataJob: DataJob = await this.transformJobtoBaseJob(job, status);                    
+                    const dataJob: DataJob = await transformJobtoBaseJob(job);                    
                     dataJob.data = job.data;        
                     dataJob.returnvalue = job.returnvalue;
                     return dataJob;
@@ -82,14 +82,14 @@ export class QueueService {
         const queue = await this.getQueue(queueName);
         const id = crypto.randomUUID();
         const job = await queue.add('download ' + url.slice(-20), { url: url.trim(), autoApprove, id });
-        return this.transformJobtoBaseJob(job);
+        return transformJobtoBaseJob(job);
     }
 
     public async getJobData(queueName: string, jobId: string): Promise<DataJob> {
         const queue = await this.getQueue(queueName);
         const job = await queue.getJob(jobId);
         if(!job) throw new Error(`Job ${jobId} not found`);
-        const baseJob: DataJob = await this.transformJobtoBaseJob(job);
+        const baseJob: DataJob = await transformJobtoBaseJob(job);
         baseJob.data = job.data;        
         baseJob.returnvalue = job.returnvalue;
         return baseJob;
@@ -111,26 +111,26 @@ export class QueueService {
         }
         return stats;
     }
+}
 
-    private async transformJobtoBaseJob(job: Job, status?: string): Promise<BaseJob> {
-        return {
-            name: job.name,
-            queue: job.queueName,
-            id: job.id,
-            url: job.data.url ?? undefined,
-            autoApprove: job.data.autoApprove ?? false,
-            processId: job.data.id ?? job.data.threadId ?? undefined,
-            approval: job.data.approval ?? undefined,
-            timestamp: job.timestamp,
-            processedBy: job.processedBy,
-            finishedOn: job.finishedOn,
-            attemptsMade: job.attemptsMade,
-            failedReason: job.failedReason,
-            stacktrace: job.stacktrace ?? [],
-            progress: typeof job.progress === 'number' ? job.progress : undefined,
-            opts: job.opts,
-            delay: job.delay,
-            status: (await job.getState()) as JobType
-        };
-    }
+export async function transformJobtoBaseJob(job: Job): Promise<BaseJob> {
+    return {
+        name: job.name,
+        queue: job.queueName,
+        id: job.id,
+        url: job.data.url ?? undefined,
+        autoApprove: job.data.autoApprove ?? false,
+        processId: job.data.id ?? job.data.threadId ?? undefined,
+        timestamp: job.timestamp,
+        processedBy: job.processedBy,
+        finishedOn: job.finishedOn,
+        attemptsMade: job.attemptsMade,
+        failedReason: job.failedReason,
+        stacktrace: job.stacktrace ?? [],
+        approval: job.data.approval ? job.data.approval : undefined,
+        progress: typeof job.progress === 'number' ? job.progress : undefined,
+        opts: job.opts,
+        delay: job.delay,
+        status: (await job.getState()) as JobType
+    };
 }

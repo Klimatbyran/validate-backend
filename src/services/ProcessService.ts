@@ -74,10 +74,26 @@ export class ProcessService {
             if(job.data.companyName) {
                 company = job.data.companyName;
             }
-            if(job.data.year) {
+            if(job.data.reportYear) {
                 year = job.data.reportYear;
             }
         }
+
+        const startedAt = Math.min(...jobs.map(job => job.timestamp));
+        const finishedAt = jobs.reduce((completionTime, job) => {
+            if(job.finishedOn === undefined || completionTime === undefined) {
+                return undefined;
+            } else {
+                return Math.max(completionTime, job.finishedOn);
+            }
+        }, 0);
+        
+        jobs.map(job => {
+            const {data, ...rest} = job;
+            return {
+                ...rest
+            };
+        })
 
         const process: Process = {
             id: id ?? "unknown",
@@ -85,6 +101,8 @@ export class ProcessService {
             wikidataId,
             company,
             year,
+            startedAt,
+            finishedAt,
             status: this.getProcessStatus(jobs),
         }
         return process;
